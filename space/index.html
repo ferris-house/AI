@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>太空英语冒险 - Space English Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+            background: #000;
+            cursor: crosshair;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 扫描线效果 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg,
+                    rgba(0, 255, 255, 0.03) 0px,
+                    rgba(0, 255, 255, 0.03) 1px,
+                    transparent 1px,
+                    transparent 2px);
+            pointer-events: none;
+            z-index: 999;
+            animation: scanlines 8s linear infinite;
+        }
+
+        @keyframes scanlines {
+            0% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(10px);
+            }
+        }
+
+        /* 边框光效 */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 3px solid;
+            border-image: linear-gradient(45deg, #0ff, #f0f, #0ff) 1;
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.3;
+        }
+
+        /* Cyberpunk UI Overlay */
+        #ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Top HUD */
+        .hud-top {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            right: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(255, 0, 255, 0.15));
+            border: 3px solid #0ff;
+            border-radius: 15px;
+            padding: 22px 35px;
+            backdrop-filter: blur(15px);
+            box-shadow:
+                0 0 25px rgba(0, 255, 255, 0.6),
+                inset 0 0 20px rgba(0, 255, 255, 0.1);
+            animation: pulse 2s infinite, floatBox 3s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+            min-width: 150px;
+            flex: 0 1 auto;
+        }
+
+        .stat-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%) translateY(-100%) rotate(45deg);
+            }
+
+            100% {
+                transform: translateX(100%) translateY(100%) rotate(45deg);
+            }
+        }
+
+        @keyframes floatBox {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .stat-label {
+            color: #0ff;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+            text-shadow: 0 0 5px #0ff;
+            position: relative;
+            z-index: 1;
+            display: block;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow:
+                0 0 15px #0ff,
+                0 0 30px #0ff,
+                0 2px 5px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 1;
+            font-family: 'Orbitron', monospace;
+            display: block;
+            line-height: 1.2;
+        }
+
+        /* Health Bar */
+        .health-bar {
+            width: 220px;
+            height: 35px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 3px solid #f0f;
+            border-radius: 18px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.6), inset 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .health-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent);
+            z-index: 2;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f0f, #0ff, #f0f);
+            background-size: 200% 100%;
+            width: 100%;
+            transition: width 0.3s;
+            box-shadow: 0 0 25px #f0f, inset 0 0 15px rgba(255, 0, 255, 0.5);
+            animation: healthFlow 3s linear infinite;
+            position: relative;
+        }
+
+        @keyframes healthFlow {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            100% {
+                background-position: 200% 50%;
+            }
+        }
+
+        .health-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(90deg,
+                    transparent,
+                    transparent 10px,
+                    rgba(255, 255, 255, 0.1) 10px,
+                    rgba(255, 255, 255, 0.1) 12px);
+        }
+
+        /* Combo System */
+        .combo-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 90px;
+            color: #ff0;
+            text-shadow:
+                0 0 40px #ff0,
+                0 0 60px #ff0,
+                0 0 80px #ff0,
+                0 5px 15px rgba(0, 0, 0, 0.8);
+            opacity: 0;
+            pointer-events: none;
+            animation: comboAnim 1s ease-out;
+            font-weight: 900;
+            letter-spacing: 5px;
+            -webkit-text-stroke: 2px #f80;
+        }
+
+        @keyframes comboAnim {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.3) rotate(-10deg);
+                filter: blur(10px);
+            }
+
+            30% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.3) rotate(5deg);
+                filter: blur(0px);
+            }
+
+            70% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.1) rotate(-2deg);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8) rotate(0deg);
+                filter: blur(5px);
+            }
+        }
+
+        /* Answer Input Area */
+        #answer-container {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: all;
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            width: auto;
+            max-width: 90%;
+        }
+
+        #answer-container.active {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        #answer-input {
+            width: 700px;
+            max-width: 100%;
+            padding: 28px 45px;
+            font-size: 30px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(0, 50, 50, 0.9));
+            border: 4px solid #0ff;
+            border-radius: 25px;
+            color: #0ff;
+            text-align: center;
+            outline: none;
+            box-shadow:
+                0 0 40px rgba(0, 255, 255, 0.8),
+                0 0 80px rgba(0, 255, 255, 0.4),
+                inset 0 0 30px rgba(0, 255, 255, 0.1);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s;
+            position: relative;
+            backdrop-filter: blur(10px);
+            line-height: 1.3;
+        }
+
+        #answer-input::placeholder {
+            color: rgba(0, 255, 255, 0.6);
+            font-weight: 400;
+        }
+
+        #answer-input:focus {
+            border-color: #0ff;
+            box-shadow:
+                0 0 50px rgba(0, 255, 255, 1),
+                0 0 100px rgba(0, 255, 255, 0.6),
+                inset 0 0 40px rgba(0, 255, 255, 0.2);
+            transform: scale(1.02);
+        }
+
+        #answer-input::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #0ff, #f0f, #0ff);
+            border-radius: 20px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #answer-input:focus::before {
+            opacity: 1;
+            animation: borderRotate 4s linear infinite;
+        }
+
+        @keyframes borderRotate {
+            0% {
+                filter: hue-rotate(0deg);
+            }
+
+            100% {
+                filter: hue-rotate(360deg);
+            }
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
+                linear-gradient(135deg, #000428, #004e92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            pointer-events: all;
+            overflow: hidden;
+        }
+
+        #start-screen::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 255, 255, 0.03) 2px,
+                    rgba(0, 255, 255, 0.03) 4px);
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(50px);
+            }
+        }
+
+        #start-screen.hidden {
+            display: none;
+        }
+
+        .game-title {
+            font-size: 85px;
+            color: #0ff;
+            text-shadow:
+                0 0 50px #0ff,
+                0 0 80px #0ff,
+                0 0 120px #0ff,
+                0 10px 30px rgba(0, 0, 0, 0.8);
+            margin-bottom: 30px;
+            animation: glow 2s infinite, titleFloat 4s ease-in-out infinite;
+            font-weight: 900;
+            letter-spacing: 8px;
+            position: relative;
+            z-index: 1;
+            -webkit-text-stroke: 2px rgba(0, 255, 255, 0.5);
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                text-shadow:
+                    0 0 50px #0ff,
+                    0 0 80px #0ff,
+                    0 0 120px #0ff,
+                    0 10px 30px rgba(0, 0, 0, 0.8);
+            }
+
+            50% {
+                text-shadow:
+                    0 0 30px #0ff,
+                    0 0 50px #0ff,
+                    0 0 80px #0ff,
+                    0 10px 30px rgba(0, 0, 0, 0.8);
+            }
+        }
+
+        @keyframes titleFloat {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        .start-btn {
+            padding: 25px 70px;
+            font-size: 32px;
+            background: linear-gradient(135deg, #0ff, #f0f, #0ff);
+            background-size: 200% 200%;
+            border: 4px solid #0ff;
+            border-radius: 50px;
+            color: #000;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow:
+                0 0 40px rgba(0, 255, 255, 1),
+                0 0 80px rgba(0, 255, 255, 0.6),
+                0 10px 30px rgba(0, 0, 0, 0.5);
+            pointer-events: all;
+            font-family: 'Orbitron', sans-serif;
+            position: relative;
+            z-index: 1;
+            animation: btnPulse 2s ease-in-out infinite;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .start-btn:hover {
+            transform: scale(1.15);
+            box-shadow:
+                0 0 60px rgba(0, 255, 255, 1),
+                0 0 120px rgba(0, 255, 255, 0.8),
+                0 15px 40px rgba(0, 0, 0, 0.6);
+            animation: btnPulse 0.5s ease-in-out infinite, btnShake 0.5s infinite;
+        }
+
+        @keyframes btnPulse {
+
+            0%,
+            100% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+
+        @keyframes btnShake {
+
+            0%,
+            100% {
+                transform: scale(1.15) rotate(0deg);
+            }
+
+            25% {
+                transform: scale(1.15) rotate(-2deg);
+            }
+
+            75% {
+                transform: scale(1.15) rotate(2deg);
+            }
+        }
+
+        /* Game Over Screen */
+        #gameover-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            pointer-events: all;
+        }
+
+        #gameover-screen.active {
+            display: flex;
+        }
+
+        .gameover-title {
+            font-size: 72px;
+            color: #f0f;
+            text-shadow:
+                0 0 50px #f0f,
+                0 0 80px #f0f,
+                0 10px 30px rgba(0, 0, 0, 0.8);
+            margin-bottom: 50px;
+            font-weight: 900;
+            letter-spacing: 5px;
+            animation: glow 2s infinite;
+        }
+
+        .final-stats {
+            color: #0ff;
+            font-size: 26px;
+            margin: 15px 0;
+            padding: 12px 30px;
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 10px;
+            min-width: 400px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+        }
+
+        #final-stats-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        #learning-report {
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(0, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            max-width: 700px;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 40px rgba(0, 255, 255, 0.8);
+            }
+        }
+
+        /* Loading */
+        .loading {
+            color: #0ff;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+
+        /* Question Display */
+        .question-box {
+            position: absolute;
+            top: 160px;
+            left: 50%;
+            transform: translateX(-50%) scale(1);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(0, 50, 50, 0.95));
+            border: 4px solid #0ff;
+            border-radius: 25px;
+            padding: 35px 60px;
+            color: #fff;
+            font-size: 34px;
+            text-align: center;
+            min-width: 600px;
+            max-width: 900px;
+            box-shadow:
+                0 0 50px rgba(0, 255, 255, 0.8),
+                0 0 100px rgba(0, 255, 255, 0.4),
+                inset 0 0 30px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            font-weight: 600;
+            letter-spacing: 2px;
+            animation: questionPulse 2s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+            line-height: 1.5;
+        }
+
+        .question-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+            animation: questionShimmer 3s infinite;
+        }
+
+        @keyframes questionPulse {
+
+            0%,
+            100% {
+                transform: translateX(-50%) scale(1);
+            }
+
+            50% {
+                transform: translateX(-50%) scale(1.02);
+            }
+        }
+
+        @keyframes questionShimmer {
+            0% {
+                transform: translateX(-100%) translateY(-100%) rotate(45deg);
+            }
+
+            100% {
+                transform: translateX(100%) translateY(100%) rotate(45deg);
+            }
+        }
+
+        #question-text {
+            position: relative;
+            z-index: 1;
+            text-shadow:
+                0 0 10px #0ff,
+                0 2px 5px rgba(0, 0, 0, 0.8);
+        }
+
+        .difficulty-badge {
+            display: inline-block;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-size: 18px;
+            margin-left: 20px;
+            margin-top: 10px;
+            text-transform: uppercase;
+            font-weight: 900;
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 0 20px currentColor;
+            animation: badgePulse 1.5s ease-in-out infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes badgePulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        .difficulty-easy {
+            background: linear-gradient(135deg, #0f0, #0c0);
+            color: #000;
+            border: 2px solid #0f0;
+            text-shadow: 0 0 10px #0f0;
+        }
+
+        .difficulty-medium {
+            background: linear-gradient(135deg, #ff0, #fc0);
+            color: #000;
+            border: 2px solid #ff0;
+            text-shadow: 0 0 10px #ff0;
+        }
+
+        .difficulty-hard {
+            background: linear-gradient(135deg, #f00, #c00);
+            color: #fff;
+            border: 2px solid #f00;
+            text-shadow: 0 0 10px #f00;
+        }
+
+        /* HUD Corner Decorations */
+        .hud-corner {
+            position: fixed;
+            width: 100px;
+            height: 100px;
+            border: 3px solid #0ff;
+            pointer-events: none;
+            z-index: 1001;
+            opacity: 0.6;
+        }
+
+        .hud-corner-tl {
+            top: 10px;
+            left: 10px;
+            border-right: none;
+            border-bottom: none;
+            box-shadow: -5px -5px 20px rgba(0, 255, 255, 0.5);
+        }
+
+        .hud-corner-tr {
+            top: 10px;
+            right: 10px;
+            border-left: none;
+            border-bottom: none;
+            box-shadow: 5px -5px 20px rgba(0, 255, 255, 0.5);
+        }
+
+        .hud-corner-bl {
+            bottom: 10px;
+            left: 10px;
+            border-right: none;
+            border-top: none;
+            box-shadow: -5px 5px 20px rgba(255, 0, 255, 0.5);
+        }
+
+        .hud-corner-br {
+            bottom: 10px;
+            right: 10px;
+            border-left: none;
+            border-top: none;
+            box-shadow: 5px 5px 20px rgba(255, 0, 255, 0.5);
+        }
+
+        /* Crosshair */
+        .crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            pointer-events: none;
+            z-index: 1002;
+            opacity: 0.4;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: #0ff;
+            box-shadow: 0 0 10px #0ff;
+        }
+
+        .crosshair::before {
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            transform: translateY(-50%);
+        }
+
+        .crosshair::after {
+            left: 50%;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            transform: translateX(-50%);
+        }
+
+        .crosshair-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            border: 2px solid #0ff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #0ff;
+            animation: crosshairPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes crosshairPulse {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.4;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.3);
+                opacity: 0.8;
+            }
+        }
+
+        /* Loading Text Enhancement */
+        .loading {
+            animation: loadingBlink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes loadingBlink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* 响应式布局 */
+        @media (max-width: 1400px) {
+            .stat-box {
+                padding: 20px 30px;
+                min-width: 130px;
+            }
+
+            .stat-value {
+                font-size: 32px;
+            }
+
+            .question-box {
+                font-size: 30px;
+                padding: 30px 50px;
+                min-width: 500px;
+            }
+
+            #answer-input {
+                width: 600px;
+                font-size: 28px;
+                padding: 25px 40px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .hud-top {
+                gap: 15px;
+            }
+
+            .stat-box {
+                padding: 18px 25px;
+                min-width: 120px;
+            }
+
+            .stat-label {
+                font-size: 12px;
+            }
+
+            .stat-value {
+                font-size: 28px;
+            }
+
+            .question-box {
+                font-size: 26px;
+                padding: 25px 40px;
+                min-width: 400px;
+                top: 140px;
+            }
+
+            #answer-input {
+                width: 500px;
+                font-size: 24px;
+                padding: 22px 35px;
+            }
+
+            .difficulty-badge {
+                font-size: 16px;
+                padding: 8px 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hud-top {
+                top: 15px;
+                left: 15px;
+                right: 15px;
+                gap: 10px;
+            }
+
+            .stat-box {
+                padding: 15px 20px;
+                min-width: 100px;
+            }
+
+            .stat-label {
+                font-size: 11px;
+                letter-spacing: 2px;
+            }
+
+            .stat-value {
+                font-size: 24px;
+            }
+
+            .health-bar {
+                width: 180px;
+                height: 30px;
+            }
+
+            .question-box {
+                font-size: 22px;
+                padding: 20px 30px;
+                min-width: 300px;
+                max-width: 90%;
+                top: 120px;
+            }
+
+            #answer-container {
+                bottom: 60px;
+            }
+
+            #answer-input {
+                width: 90%;
+                font-size: 20px;
+                padding: 18px 30px;
+            }
+
+            .difficulty-badge {
+                font-size: 14px;
+                padding: 6px 15px;
+                margin-left: 10px;
+            }
+
+            .game-title {
+                font-size: 60px;
+            }
+
+            .start-btn {
+                padding: 20px 50px;
+                font-size: 26px;
+            }
+        }
+
+        /* 视觉层次和呼吸空间 */
+        .stat-box+.stat-box {
+            margin-left: 0;
+        }
+
+        /* 添加提示文字 */
+        #answer-container::before {
+            content: '💡 按回车提交答案';
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(0, 255, 255, 0.6);
+            font-size: 14px;
+            white-space: nowrap;
+            animation: hintBlink 2s ease-in-out infinite;
+        }
+
+        @keyframes hintBlink {
+
+            0%,
+            100% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1 class="game-title">🚀 太空英语冒险</h1>
+        <p style="color: #0ff; font-size: 20px; margin-bottom: 40px;">AI驱动的3D学习游戏</p>
+        <button class="start-btn" onclick="startGame()">开始冒险</button>
+        <p class="loading">正在初始化AI系统...</p>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen">
+        <h1 class="gameover-title">任务结束</h1>
+        <div id="final-stats-container"></div>
+        <div id="learning-report" style="margin-top: 30px; max-width: 800px; text-align: left;"></div>
+        <div style="display: flex; gap: 20px; margin-top: 40px;">
+            <button class="start-btn" onclick="restartGame()">再次挑战</button>
+            <button class="start-btn" style="background: linear-gradient(135deg, #ff0, #f0f);"
+                onclick="showLearningAnalytics()">学习分析</button>
+        </div>
+    </div>
+
+    <!-- Learning Analytics Screen -->
+    <div id="analytics-screen"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; z-index: 1001; overflow-y: auto; pointer-events: all;">
+        <div style="max-width: 1200px; margin: 50px auto; padding: 40px; color: #0ff;">
+            <h1 style="font-size: 48px; text-align: center; margin-bottom: 40px; text-shadow: 0 0 20px #0ff;">📊 学习数据分析
+            </h1>
+            <div id="analytics-content"></div>
+            <button class="start-btn" style="margin: 40px auto; display: block;" onclick="closeAnalytics()">返回</button>
+        </div>
+    </div>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD Corner Decorations -->
+    <div class="hud-corner hud-corner-tl"></div>
+    <div class="hud-corner hud-corner-tr"></div>
+    <div class="hud-corner hud-corner-bl"></div>
+    <div class="hud-corner hud-corner-br"></div>
+
+    <!-- Crosshair -->
+    <div class="crosshair">
+        <div class="crosshair-center"></div>
+    </div>
+
+    <!-- UI Overlay -->
+    <div id="ui-overlay">
+        <div class="hud-top">
+            <div class="stat-box">
+                <div class="stat-label">分数</div>
+                <div class="stat-value" id="score">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">连击</div>
+                <div class="stat-value" id="combo" style="color: #ff0;">0x</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">生命值</div>
+                <div class="health-bar">
+                    <div class="health-fill" id="health-fill"></div>
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">正确率</div>
+                <div class="stat-value" id="accuracy" style="color: #0f0;">100%</div>
+            </div>
+        </div>
+
+        <!-- Current Question -->
+        <div class="question-box" id="question-display" style="display: none;">
+            <span id="question-text"></span>
+            <span class="difficulty-badge" id="difficulty-badge"></span>
+        </div>
+
+        <!-- Answer Input -->
+        <div id="answer-container">
+            <input type="text" id="answer-input" placeholder="输入答案后按回车..." autocomplete="off">
+        </div>
+
+        <!-- Combo Display -->
+        <div class="combo-display" id="combo-display"></div>
+    </div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Post Processing Effects -->
+    <script src="/space/post-processing.js"></script>
+
+    <!-- Nebula System -->
+    <script src="/space/nebula-system.js"></script>
+
+    <!-- Hologram UI -->
+    <script src="/space/hologram-ui.js"></script>
+
+    <!-- Energy Shield -->
+    <script src="/space/energy-shield.js"></script>
+
+    <!-- Advanced Effects System -->
+    <script src="/space/advanced-effects.js"></script>
+
+    <!-- AI Engine -->
+    <script src="/space/ai-engine.js"></script>
+
+    <!-- Game Scripts -->
+    <script src="/space/game.js"></script>
+</body>
+
+</html>
